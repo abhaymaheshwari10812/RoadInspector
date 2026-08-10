@@ -98,12 +98,23 @@ app.get('/api/get-cracks', (req, res) => {
 });
 
 app.post('/api/save-crack', (req, res) => {
-  const { id, preview, topClass, rawClass, isCrack, timestamp, gps, confidence } = req.body;
-  if (!isCrack) {
+  const { id, preview, topClass, rawClass, isCrack, isUnsafe, timestamp, gps, confidence } = req.body;
+  // Determine detection flag: prioritize explicit isCrack if provided, otherwise fall back to isUnsafe
+  const detectionFlag = (isCrack !== undefined) ? isCrack : isUnsafe;
+  if (!detectionFlag) {
     return res.json({ success: true, message: 'Not a crack – skipped' });
   }
   const db = readDB();
-  const newEntry = { id: id || Date.now().toString(), preview, topClass, rawClass, isCrack, timestamp: timestamp || new Date().toISOString(), gps, confidence };
+  const newEntry = {
+    id: id || Date.now().toString(),
+    preview,
+    topClass,
+    rawClass,
+    isCrack: detectionFlag,
+    timestamp: timestamp || new Date().toISOString(),
+    gps,
+    confidence
+  };
   db.unshift(newEntry);
   writeDB(db);
   res.json({ success: true, data: newEntry });

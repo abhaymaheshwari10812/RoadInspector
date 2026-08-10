@@ -114,9 +114,11 @@ app.get('/api/get-cracks', (req, res) => {
 
 app.post('/api/save-crack', (req, res) => {
   try {
-    const { id, preview, topClass, rawClass, isCrack, timestamp, gps, confidence } = req.body;
+    const { id, preview, topClass, rawClass, isCrack, isUnsafe, timestamp, gps, confidence } = req.body;
     
-    if (!isCrack) {
+    const crackDetected = isCrack !== undefined ? isCrack : isUnsafe;
+
+    if (!crackDetected) {
       return res.status(200).json({ success: true, message: 'Not a crack, skipped.' });
     }
 
@@ -126,7 +128,7 @@ app.post('/api/save-crack', (req, res) => {
       preview,
       topClass,
       rawClass,
-      isCrack,
+      isCrack: crackDetected,
       timestamp: timestamp || new Date().toISOString(),
       gps,
       confidence

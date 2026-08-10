@@ -6,7 +6,7 @@ function DatabaseView({ onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+    useEffect(() => {
     async function fetchCracks() {
       try {
         const response = await fetch('/api/get-cracks');
@@ -24,6 +24,10 @@ function DatabaseView({ onClose }) {
       }
     }
     fetchCracks();
+    
+    // Poll for new detections every 3 seconds to keep DB synced
+    const interval = setInterval(fetchCracks, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

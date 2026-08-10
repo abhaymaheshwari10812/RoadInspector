@@ -111,13 +111,13 @@ function App() {
       if (videoRef.current && videoRef.current.readyState === 4) {
         const prediction = await model.predict(videoRef.current);
         const top = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
-        const isCrack = top.className.toLowerCase() === 'crack';
+        const isUnsafe = top.className.toLowerCase() === 'crack' || top.className.toLowerCase().includes('road deformation');
         const displayClass = top.className === 'No Crackl' ? 'No Crack' : top.className;
 
-        setLivePrediction({ prediction, top, isCrack, displayClass });
+        setLivePrediction({ prediction, top, isUnsafe, displayClass });
 
-        // Auto-alert on crack (once per session)
-        if (isCrack && !alertSentRef.current && targetEmail) {
+        // Auto-alert on crack/deformation (once per session)
+        if (isUnsafe && !alertSentRef.current && targetEmail) {
           alertSentRef.current = true;
           setAlertSent(true);
           try {
@@ -125,7 +125,7 @@ function App() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                message: 'A crack was detected via live webcam feed.',
+                message: 'An unsafe condition (crack or deformation) was detected via live webcam feed.',
                 recipientEmail: targetEmail,
                 gps: deviceGps || null,
                 timestamp: new Date().toISOString(),
@@ -143,15 +143,21 @@ function App() {
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [webcamActive, model, targetEmail]);
 
-  const saveCrackToDB = async (crackObj) => {
-    if (!crackObj.isCrack) return;
+  const saveUnsafeToDB = async (unsafeObj) => {
+    if (!unsafeObj.isUnsafe) return;
     try {
-      await fetch('/api/save-crack', {
+      const res = await fetch('/api/save-crack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(crackObj),
+        body: JSON.stringify(unsafeObj),
       });
-    } catch (e) { console.error('DB save error', e); }
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Failed to save detection:', res.status, errText);
+      }
+    } catch (e) {
+      console.error('DB save error', e);
+    }
   };
 
   // Capture snapshot from webcam and add to history
@@ -162,19 +168,19 @@ function App() {
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
     const preview = canvas.toDataURL('image/jpeg');
-    const newCrack = {
+    const newRes = {
       id: Math.random().toString(36).substr(2, 9),
       preview,
       predictions: livePrediction.prediction,
       topClass: livePrediction.displayClass,
       rawClass: livePrediction.top.className,
-      isCrack: livePrediction.isCrack,
+      isUnsafe: livePrediction.isUnsafe,
       timestamp: new Date().toISOString(),
       gps: deviceGps || null,
       confidence: livePrediction.top.probability * 100
     };
-    setResults(prev => [newCrack, ...prev]);
-    saveCrackToDB(newCrack);
+    setResults(prev => [newRes, ...prev]);
+    saveUnsafeToDB(newRes);
   };
 
   // Cleanup on unmount
@@ -191,7 +197,7 @@ function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: 'A crack was detected in an uploaded image.',
+            message: 'An unsafe condition (crack or deformation) was detected in an uploaded image.',
             image: reader.result,
             recipientEmail: targetEmail,
             gps: gpsData,
@@ -221,7 +227,7 @@ function App() {
         if (!model) return;
         const prediction = await model.predict(img);
         const top = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
-        const isCrack = top.className.toLowerCase() === 'crack';
+        const isUnsafe = top.className.toLowerCase() === 'crack' || top.className.toLowerCase().includes('road deformation');
         const displayClass = top.className === 'No Crackl' ? 'No Crack' : top.className;
         
         const newRes = {
@@ -230,15 +236,15 @@ function App() {
           predictions: prediction,
           topClass: displayClass,
           rawClass: top.className,
-          isCrack,
+          isUnsafe,
           timestamp: new Date().toISOString(),
           gps: gpsData,
           confidence: top.probability * 100
         };
         
-        if (isCrack) {
+        if (isUnsafe) {
           sendAlert(file, gpsData, newRes.timestamp, newRes.confidence, newRes.topClass);
-          saveCrackToDB(newRes);
+          saveUnsafeToDB(newRes);
         }
         resolve(newRes);
       };
@@ -272,7 +278,7 @@ function App() {
   const latest = results[0];
   const activePred = webcamActive ? livePrediction : null;
   const sidebarPred = activePred
-    ? { topClass: activePred.displayClass, rawClass: activePred.top.className, isCrack: activePred.isCrack, predictions: activePred.prediction }
+    ? { topClass: activePred.displayClass, rawClass: activePred.top.className, isUnsafe: activePred.isUnsafe, predictions: activePred.prediction }
     : latest;
 
   const getConf = (res) =>
@@ -314,7 +320,7 @@ function App() {
         {alertSent && (
           <div className="alert-banner">
             <FiAlertTriangle size={20} style={{ flexShrink: 0 }} />
-            <div><strong>Alert Sent!</strong> Email dispatched for detected crack.</div>
+            <div><strong>Alert Sent!</strong> Email dispatched for detected unsafe condition.</div>
           </div>
         )}
 
@@ -351,7 +357,7 @@ function App() {
               <FiVideo size={16} style={{ color: 'var(--blue)' }} />
               <span>Live Camera Feed</span>
               {webcamActive && livePrediction && (
-                <span className={`live-badge ${livePrediction.isCrack ? 'live-danger' : 'live-safe'}`}>
+                <span className={`live-badge ${livePrediction.isUnsafe ? 'live-danger' : 'live-safe'}`}>
                   ● LIVE — {livePrediction.displayClass.toUpperCase()}
                 </span>
               )}
@@ -380,17 +386,17 @@ function App() {
                 muted
                 className="webcam-video"
                 style={{
-                  border: `3px solid ${livePrediction?.isCrack ? 'var(--red)' : livePrediction ? 'var(--green)' : 'var(--border)'}`,
+                  border: `3px solid ${livePrediction?.isUnsafe ? 'var(--red)' : livePrediction ? 'var(--green)' : 'var(--border)'}`,
                   display: 'block',
                   width: '100%',
                   minHeight: '200px',
                   backgroundColor: '#000',
                 }}
               />
-              {livePrediction?.isCrack && (
+              {livePrediction?.isUnsafe && (
                 <div className="image-overlay">
                   <div className="overlay-label">
-                    <div className="status-dot error" /> CRACK DETECTED
+                    <div className="status-dot error" /> UNSAFE DETECTED
                   </div>
                   <div className="info-row">
                     <span className="ir-key">Confidence</span>
@@ -422,12 +428,12 @@ function App() {
             <img
               src={latest.preview}
               alt="Latest Scan"
-              style={{ border: `3px solid ${latest.isCrack ? 'var(--red)' : 'var(--green)'}` }}
+              style={{ border: `3px solid ${latest.isUnsafe ? 'var(--red)' : 'var(--green)'}` }}
             />
-            {latest.isCrack && (
+            {latest.isUnsafe && (
               <div className="image-overlay">
                 <div className="overlay-label">
-                  <div className="status-dot error" /> CRACK DETECTED
+                  <div className="status-dot error" /> UNSAFE DETECTED
                 </div>
                 <div className="info-row">
                   <span className="ir-key">Confidence</span>
@@ -450,14 +456,14 @@ function App() {
         <div className="sidebar-section">
           <div className="sec-label">LIVE PREDICTION</div>
           {sidebarPred ? (
-            <div className="pred-big" style={{ borderColor: sidebarPred.isCrack ? 'var(--red)' : 'var(--green)' }}>
-              <div className={`pred-class ${sidebarPred.isCrack ? 'crack' : 'nocrack'}`}>
+            <div className="pred-big" style={{ borderColor: sidebarPred.isUnsafe ? 'var(--red)' : 'var(--green)' }}>
+              <div className={`pred-class ${sidebarPred.isUnsafe ? 'crack' : 'nocrack'}`}>
                 {sidebarPred.topClass}
               </div>
               <div className="pred-conf">Confidence: {getConf(sidebarPred).toFixed(1)}%</div>
               <div className="conf-bar">
                 <div
-                  className={`conf-fill ${sidebarPred.isCrack ? 'crack' : ''}`}
+                  className={`conf-fill ${sidebarPred.isUnsafe ? 'crack' : ''}`}
                   style={{ width: `${getConf(sidebarPred)}%` }}
                 />
               </div>
@@ -470,14 +476,14 @@ function App() {
 
           {sidebarPred && (
             <div className="pred-rows">
-              {sidebarPred.predictions.map(p => {
-                const isCrackClass = p.className.toLowerCase() === 'crack';
+              {sidebarPred.predictions.filter(p => !p.className.toLowerCase().includes('arnav')).map(p => {
+                const isUnsafeClass = p.className.toLowerCase() === 'crack' || p.className.toLowerCase().includes('road deformation');
                 const isMatch = p.className === sidebarPred.rawClass;
                 return (
                   <div key={p.className} className="pred-row">
                     <div className="pred-row-header">
                       <span className="pr-label" style={{
-                        color: isMatch ? (isCrackClass ? 'var(--red)' : 'var(--green)') : 'var(--muted)'
+                        color: isMatch ? (isUnsafeClass ? 'var(--red)' : 'var(--green)') : 'var(--muted)'
                       }}>
                         {p.className === 'No Crackl' ? 'No Crack' : p.className}
                       </span>
@@ -486,7 +492,7 @@ function App() {
                     <div className="pr-bar">
                       <div className="pr-fill" style={{
                         width: `${p.probability * 100}%`,
-                        background: isCrackClass ? 'var(--red)' : 'var(--blue)',
+                        background: isUnsafeClass ? 'var(--red)' : 'var(--blue)',
                       }} />
                     </div>
                   </div>
@@ -535,13 +541,13 @@ function App() {
         <div id="hist-list">
           {results.map(res => (
             <div key={res.id} className="hist-row">
-              <div className={`badge ${res.isCrack ? 'badge-danger' : 'badge-success'}`}>
-                {res.isCrack ? 'CRACK' : 'SAFE'}
+              <div className={`badge ${res.isUnsafe ? 'badge-danger' : 'badge-success'}`}>
+                {res.isUnsafe ? res.displayClass?.toUpperCase() || 'UNSAFE' : 'SAFE'}
               </div>
               <div style={{ color: 'var(--muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {res.id}
               </div>
-              <div style={{ color: res.isCrack ? 'var(--red)' : 'var(--green)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ color: res.isUnsafe ? 'var(--red)' : 'var(--green)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                 {getConf(res).toFixed(0)}%
               </div>
               <div style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{res.timestamp}</div>
