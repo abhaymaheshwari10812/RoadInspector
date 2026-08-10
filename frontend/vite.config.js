@@ -14,5 +14,5 @@ export default defineConfig({
   },
   plugins: [react()],
   // Set base URL for GitHub Pages deployment
-  base: '/Nirmaan_Hope/',
+  base: '/Nirmaan_V1/',
 })
