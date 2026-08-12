@@ -269,13 +269,13 @@ body {
   display: flex; flex-direction: column; gap: 5px;
 }
 .pred-class { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; transition: color 0.3s; }
-.pred-class.crack { color: var(--red); }
-.pred-class.nocrack { color: var(--green); }
+.pred-class.unsafe { color: var(--red); }
+.pred-class.safe { color: var(--green); }
 .pred-class.waiting { color: var(--muted); }
 .pred-conf { font-size: 12px; color: var(--muted); }
 .conf-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 2px; }
 .conf-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.3s ease, background 0.3s; }
-.conf-fill.crack { background: var(--red); }
+.conf-fill.unsafe { background: var(--red); }
 
 /* ─── Probability Bars ─── */
 .pred-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

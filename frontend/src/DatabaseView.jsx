@@ -39,7 +39,7 @@ function DatabaseView({ onClose }) {
           <div className="db-title-group">
             <FiDatabase className="db-icon" />
             <div>
-              <h2 className="db-title">Crack Detection Database</h2>
+              <h2 className="db-title">Road Deformation Database</h2>
               <p className="db-subtitle">Restricted Access: BMC Officials Only</p>
             </div>
           </div>
@@ -57,7 +57,7 @@ function DatabaseView({ onClose }) {
               <FiAlertCircle size={20} /> {error}
             </div>
           ) : cracks.length === 0 ? (
-            <div className="db-message">No cracks have been recorded yet.</div>
+            <div className="db-message">No deformations have been recorded yet.</div>
           ) : (
             <div className="table-wrapper">
               <table className="db-table">
@@ -74,7 +74,7 @@ function DatabaseView({ onClose }) {
                   {cracks.map((crack) => (
                     <tr key={crack.id}>
                       <td className="td-image">
-                        <img src={crack.preview} alt="Detected Crack" className="db-thumbnail" />
+                        <img src={crack.preview} alt="Detected Deformation" className="db-thumbnail" />
                       </td>
                       <td className="td-time">
                         {new Date(crack.timestamp).toLocaleString()}

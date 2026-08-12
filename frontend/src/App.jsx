@@ -111,8 +111,8 @@ function App() {
       if (videoRef.current && videoRef.current.readyState === 4) {
         const prediction = await model.predict(videoRef.current);
         const top = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
-        const isUnsafe = top.className.toLowerCase() === 'crack' || top.className.toLowerCase().includes('road deformation');
-        const displayClass = top.className === 'No Crackl' ? 'No Crack' : top.className;
+        const isUnsafe = top.className === 'Road Deformations';
+        const displayClass = top.className;
 
         setLivePrediction({ prediction, top, isUnsafe, displayClass });
 
@@ -227,8 +227,8 @@ function App() {
         if (!model) return;
         const prediction = await model.predict(img);
         const top = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
-        const isUnsafe = top.className.toLowerCase() === 'crack' || top.className.toLowerCase().includes('road deformation');
-        const displayClass = top.className === 'No Crackl' ? 'No Crack' : top.className;
+        const isUnsafe = top.className === 'Road Deformations';
+        const displayClass = top.className;
         
         const newRes = {
           id: Math.random().toString(36).substr(2, 9),
@@ -347,7 +347,7 @@ function App() {
           <input {...getInputProps()} />
           <FiUploadCloud className="dropzone-icon" />
           <h3>{isDragActive ? 'Drop images here…' : 'Tap to upload or drag & drop'}</h3>
-          <p>Upload road surfaces for automated crack inspection.</p>
+          <p>Upload road surfaces for automated deformation inspection.</p>
         </div>
 
         {/* Webcam Section */}
@@ -418,7 +418,7 @@ function App() {
         {currentUser?.role === 'BMC Official' && (
           <button className="btn-database" onClick={() => setShowDatabase(true)}>
             <FiDatabase style={{ marginRight: '8px' }} />
-            Crack detection database
+            Road Deformation Database
           </button>
         )}
 
@@ -457,13 +457,13 @@ function App() {
           <div className="sec-label">LIVE PREDICTION</div>
           {sidebarPred ? (
             <div className="pred-big" style={{ borderColor: sidebarPred.isUnsafe ? 'var(--red)' : 'var(--green)' }}>
-              <div className={`pred-class ${sidebarPred.isUnsafe ? 'crack' : 'nocrack'}`}>
+              <div className={`pred-class ${sidebarPred.isUnsafe ? 'unsafe' : 'safe'}`}>
                 {sidebarPred.topClass}
               </div>
               <div className="pred-conf">Confidence: {getConf(sidebarPred).toFixed(1)}%</div>
               <div className="conf-bar">
                 <div
-                  className={`conf-fill ${sidebarPred.isUnsafe ? 'crack' : ''}`}
+                  className={`conf-fill ${sidebarPred.isUnsafe ? 'unsafe' : ''}`}
                   style={{ width: `${getConf(sidebarPred)}%` }}
                 />
               </div>
@@ -477,7 +477,7 @@ function App() {
           {sidebarPred && (
             <div className="pred-rows">
               {sidebarPred.predictions.filter(p => !p.className.toLowerCase().includes('arnav')).map(p => {
-                const isUnsafeClass = p.className.toLowerCase() === 'crack' || p.className.toLowerCase().includes('road deformation');
+                const isUnsafeClass = p.className === 'Road Deformations';
                 const isMatch = p.className === sidebarPred.rawClass;
                 return (
                   <div key={p.className} className="pred-row">
@@ -485,7 +485,7 @@ function App() {
                       <span className="pr-label" style={{
                         color: isMatch ? (isUnsafeClass ? 'var(--red)' : 'var(--green)') : 'var(--muted)'
                       }}>
-                        {p.className === 'No Crackl' ? 'No Crack' : p.className}
+                        {p.className === 'All clear' ? 'All clear' : p.className}
                       </span>
                       <span className="pr-pct">{(p.probability * 100).toFixed(1)}%</span>
                     </div>

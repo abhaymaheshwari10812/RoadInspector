@@ -22,7 +22,7 @@ function Login({ onLoginSuccess }) {
 
   const handleVerifyCode = (e) => {
     e.preventDefault();
-    if (code.trim().toLowerCase() === 'crack') {
+    if (code.trim().toLowerCase() === 'deformation') {
       setError('');
       setStep('credentials');
     } else {
@@ -60,7 +60,7 @@ function Login({ onLoginSuccess }) {
       return;
     }
     
-    const assignedRole = code.trim().toLowerCase() === 'crack' ? 'BMC Official' : 'Civilian';
+    const assignedRole = code.trim().toLowerCase() === 'deformation' ? 'BMC Official' : 'Civilian';
     
     try {
       const usersStr = localStorage.getItem('nirmaan_users');
@@ -139,7 +139,7 @@ function Login({ onLoginSuccess }) {
               <div className="role-card" onClick={() => handleSelectRole('civilian')}>
                 <FiUser className="role-icon" />
                 <span className="role-title">Civilian</span>
-                <span className="role-desc">Report cracks in your neighborhood</span>
+                <span className="role-desc">Report road deformations in your neighborhood</span>
               </div>
               <div className="role-card" onClick={() => handleSelectRole('bmc_official')}>
                 <FiShield className="role-icon" />
