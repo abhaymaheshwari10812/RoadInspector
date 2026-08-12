@@ -9,6 +9,20 @@ function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const USERS_STORAGE_KEY = 'nirmaan_users';
+
+  const readLocalUsers = () => {
+    try {
+      const usersStr = localStorage.getItem(USERS_STORAGE_KEY);
+      return usersStr ? JSON.parse(usersStr) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeLocalUsers = (users) => {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  };
 
   const handleSelectRole = (selectedRole) => {
     setRole(selectedRole);
@@ -38,19 +52,30 @@ function Login({ onLoginSuccess }) {
     }
     
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const result = await response.json();
+      let user = null;
 
-      if (!response.ok || !result.success) {
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          user = result.data;
+        }
+      } catch {
+        const users = readLocalUsers();
+        user = users.find((u) => u.email === email && u.password === password) || null;
+      }
+
+      if (!user) {
         setError('Invalid credentials.');
         return;
       }
 
-      onLoginSuccess({ email: result.data.email, role: result.data.role });
+      onLoginSuccess({ email: user.email, role: user.role });
     } catch (err) {
       console.error('Login error', err);
       setError('An error occurred during login.');
@@ -67,19 +92,40 @@ function Login({ onLoginSuccess }) {
     const assignedRole = code.trim().toLowerCase() === 'deformation' ? 'BMC Official' : 'Civilian';
     
     try {
-      const response = await fetch('/api/create-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: assignedRole }),
-      });
-      const result = await response.json();
+      let createdUser = null;
 
-      if (!response.ok || !result.success) {
-        setError(result.error || 'Could not create account.');
+      try {
+        const response = await fetch('/api/create-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, role: assignedRole }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          createdUser = result.data;
+        } else if (result.error) {
+          setError(result.error);
+          return;
+        }
+      } catch {
+        const users = readLocalUsers();
+        if (users.find((u) => u.email === email)) {
+          setError('User already exists.');
+          return;
+        }
+
+        createdUser = { email, password, role: assignedRole };
+        users.push(createdUser);
+        writeLocalUsers(users);
+      }
+
+      if (!createdUser) {
+        setError('Could not create account.');
         return;
       }
 
-      onLoginSuccess({ email: result.data.email, role: result.data.role });
+      onLoginSuccess({ email: createdUser.email, role: createdUser.role });
     } catch (err) {
       console.error('Registration error', err);
       setError('An error occurred during registration.');
