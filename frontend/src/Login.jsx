@@ -38,15 +38,19 @@ function Login({ onLoginSuccess }) {
     }
     
     try {
-      const usersStr = localStorage.getItem('nirmaan_users');
-      const users = usersStr ? JSON.parse(usersStr) : [];
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        onLoginSuccess({ email: user.email, role: user.role });
-      } else {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
         setError('Invalid credentials.');
+        return;
       }
+
+      onLoginSuccess({ email: result.data.email, role: result.data.role });
     } catch (err) {
       console.error('Login error', err);
       setError('An error occurred during login.');
@@ -63,19 +67,19 @@ function Login({ onLoginSuccess }) {
     const assignedRole = code.trim().toLowerCase() === 'deformation' ? 'BMC Official' : 'Civilian';
     
     try {
-      const usersStr = localStorage.getItem('nirmaan_users');
-      const users = usersStr ? JSON.parse(usersStr) : [];
-      
-      if (users.find(u => u.email === email)) {
-        setError('User already exists.');
+      const response = await fetch('/api/create-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: assignedRole }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setError(result.error || 'Could not create account.');
         return;
       }
-      
-      const newUser = { email, password, role: assignedRole };
-      users.push(newUser);
-      localStorage.setItem('nirmaan_users', JSON.stringify(users));
-      
-      onLoginSuccess({ email: newUser.email, role: newUser.role });
+
+      onLoginSuccess({ email: result.data.email, role: result.data.role });
     } catch (err) {
       console.error('Registration error', err);
       setError('An error occurred during registration.');
