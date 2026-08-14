@@ -36,7 +36,7 @@ function Login({ onLoginSuccess }) {
 
   const handleVerifyCode = (e) => {
     e.preventDefault();
-    if (code.trim().toLowerCase() === 'deformation') {
+    if (code.trim().toLowerCase() === 'crack') {
       setError('');
       setStep('credentials');
     } else {
@@ -89,7 +89,7 @@ function Login({ onLoginSuccess }) {
       return;
     }
     
-    const assignedRole = code.trim().toLowerCase() === 'deformation' ? 'BMC Official' : 'Civilian';
+    const assignedRole = code.trim().toLowerCase() === 'crack' ? 'BMC Official' : 'Civilian';
     
     try {
       let createdUser = null;
